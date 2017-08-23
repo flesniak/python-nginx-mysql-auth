@@ -1,0 +1,10 @@
+[Unit]
+Description=nginx Authentication Service
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/opt/nginx-auth-service.py
+
+[Install]
+WantedBy=multi-user.target
