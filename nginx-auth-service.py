@@ -18,13 +18,15 @@ def generate_hash(user, password):
   m.update("{}:{}".format(password, user).encode("utf-8"))
   return m.hexdigest()
 
-def check_auth(user, password):
+def check_auth(user, password, mode):
   global auth_cache
   authorized = False
   auth_hash = generate_hash(user, password)
   if auth_hash in auth_cache:
     app.logger.info("Auth of {} from cache".format(user))
     return True
+  else:
+    app.logger.info("Auth of {} not from cache".format(user))
   try:
     cnx = mysql.connector.connect(user='user', passwd='password', database='auth_database')
   except Exception as e:
@@ -32,7 +34,10 @@ def check_auth(user, password):
     return False
   try:
     cursor = cnx.cursor()
-    cursor.execute('SELECT count(*) FROM users WHERE hash=%s', (str(auth_hash),))
+    query = 'SELECT count(*) FROM user WHERE hash=%s'
+    if mode == "admin":
+      query += ' AND rechte="admin"'
+    cursor.execute(query, (str(auth_hash),))
     authorized = next(cursor)[0] == 1
     cursor.close()
   except Exception as e:
@@ -51,7 +56,8 @@ def custom_401(error):
 @app.route('/auth', methods=['GET'])
 def login():
   auth = request.authorization
-  if auth is not None and check_auth(auth.username, auth.password):
+  mode = request.headers.get("X-Auth-Mode")
+  if auth is not None and check_auth(auth.username, auth.password, mode):
     return "Authentication successful"
   else:
     abort(401)
